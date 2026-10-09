@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Sound Therapy Viz (control)</title>
+  <link rel="icon" href="data:," />
+  <link rel="stylesheet" href="style.css?v=1131ae08124d" />
+  <style>
+    html, body { position: static; overflow: auto; height: auto; min-height: 100%; background: #07080c; user-select: none; }
+    body.ctl { padding: 1rem; font-family: "Helvetica Neue", Helvetica, Arial, system-ui, sans-serif; }
+    #ctl-bar { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; margin-bottom: 0.8rem; }
+    #ctl-bar button { appearance: none; font: inherit; font-size: 0.8rem; padding: 0.45rem 0.9rem; border-radius: 999px; border: 1px solid rgba(255,255,255,0.25); background: rgba(255,255,255,0.07); color: #eef; cursor: pointer; }
+    #ctl-bar button.primary { background: #2a4d8f; border-color: #5b86d6; }
+    #ctl-bar button:hover { background: rgba(255,255,255,0.15); }
+    #ctl-title { font-size: 0.75rem; letter-spacing: 0.14em; text-transform: uppercase; color: #9aa3b8; margin-right: 0.5rem; }
+    #ctl-link { font-size: 0.8rem; padding: 0.3rem 0.7rem; border-radius: 999px; background: #3a1418; color: #ffb3b3; }
+    #ctl-link.ok { background: #12301e; color: #9ff0b8; }
+    #ctl-hint { font-size: 0.78rem; color: #ffd27a; min-height: 1.1em; margin: 0 0 0.6rem; }
+    #ctl-help { font-size: 0.72rem; color: #8e96aa; margin-top: 0.8rem; line-height: 1.5; }
+    /* mirrored stage panel: fills the laptop window, two columns */
+    body.ctl #ops { position: static; display: grid; grid-template-columns: repeat(auto-fit, minmax(21rem, 1fr)); width: 100%; max-height: none; overflow: visible; padding: 0; align-items: start; }
+    body.ctl #ops-controls { grid-column: 1 / -1; }
+    body.ctl #btn-mode { display: none; }
+    body.ctl .kh-mood { cursor: pointer; }
+    body.ctl #ops.stale { opacity: 0.45; }
+    #toast { z-index: 9; }
+    body.ctl #toast.on { opacity: 0.92; }
+  </style>
+</head>
+<body class="ctl mode-demo">
+  <div id="ctl-bar">
+    <span id="ctl-title">Control</span>
+    <span id="ctl-link">stage: not connected</span>
+    <button id="ctl-open" class="primary" type="button">Open stage window</button>
+    <button id="ctl-show" type="button" title="F">Stage show mode (F)</button>
+    <button id="ctl-start" type="button" title="Space">Start mic (Space)</button>
+    <button id="ctl-track" type="button" title="O">Load track (O)</button>
+    <input id="ctl-file" type="file" accept="audio/*" hidden />
+  </div>
+  <p id="ctl-hint"></p>
+  <div id="ops" class="stale"><div id="ops-controls"></div><section class="ops-card"><div class="ops-pending">Waiting for the stage window. Click "Open stage window", or open the show in another window of this browser.</div></section></div>
+  <p id="ctl-help">
+    Keys here drive the stage: 1 to 8, 9 Sad, 0 Wonder, minus Intensity lock a mood · A auto · M lock · Shift+number teach · Shift+0 reset teaching ·
+    Z ASMR · I AI · L label · W waves · S silk · N nebula · [ ] trim · Space start mic · O load track · F stage show mode.
+    The audience window never shows this panel. On the stage window: click once to start sound, F = fullscreen show mode, Esc leaves.
+  </p>
+  <div id="toast"></div>
+  <script src="control.js?v=1131ae08124d"></script>
+</body>
+</html>

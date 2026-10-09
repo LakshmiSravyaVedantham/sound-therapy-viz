@@ -1,0 +1,454 @@
+/* Sound Therapy Viz — show-first styling.
+   Default (mode-show): audience sees ONLY the full-bleed canvas. Zero HUD / text / chrome.
+   mode-demo (D): operator panel for rehearsal / tech check. */
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body {
+  width: 100%;
+  height: 100%;
+  min-height: 100%;
+  min-height: 100dvh;
+  overflow: hidden;
+  background: #000;
+  color: #f2f2f5;
+  font-family: "Helvetica Neue", "Segoe UI", system-ui, sans-serif;
+  cursor: default;
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  /* Reduce iOS rubber-band bounce over the canvas */
+  overscroll-behavior: none;
+  position: fixed;
+  inset: 0;
+}
+body.playing:not(.mode-demo) { cursor: none; }
+body.mode-demo { cursor: default; }
+
+#viz {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Soft emotion whisper: visible but ethereal (shown / not-shown feel) */
+#whisper {
+  position: fixed;
+  left: 50%;
+  bottom: 11vh;
+  bottom: calc(11vh + env(safe-area-inset-bottom, 0px));
+  transform: translate(-50%, 6px);
+  z-index: 2;
+  pointer-events: none;
+  display: none;
+  font-size: clamp(0.85rem, 1.5vw, 1.35rem);
+  font-weight: 300;
+  letter-spacing: 0.62em;
+  padding-left: 0.62em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  opacity: 0;
+  filter: blur(3px);
+  text-shadow: 0 0 22px currentColor, 0 0 2px rgba(0, 0, 0, 0.6);
+  transition: opacity 2.6s ease, filter 2.6s ease, transform 2.6s ease;
+}
+#whisper.on {
+  opacity: 0.5;
+  filter: blur(0);
+  transform: translate(-50%, 0);
+  transition: opacity 1.6s ease, filter 1.6s ease, transform 1.6s ease;
+}
+body:not(.label-off) #whisper { display: block; }
+body.label-off #whisper { display: none !important; }
+
+/* ---------- Pre-show hint: soft center message; gone once mic/track is live ---------- */
+#start-hint {
+  position: fixed;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 2;
+  pointer-events: none;
+  max-width: min(92vw, 28rem);
+  padding: 1.1rem 1.6rem 1.35rem;
+  border: none;
+  border-radius: 0;
+  background:
+    radial-gradient(
+      ellipse 75% 90% at 50% 50%,
+      rgba(255, 255, 255, 0.09) 0%,
+      rgba(160, 190, 255, 0.04) 42%,
+      rgba(0, 0, 0, 0) 72%
+    );
+  box-shadow: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  font-family: "Helvetica Neue", Helvetica, Arial, system-ui, sans-serif;
+  font-size: clamp(1.05rem, 2.4vw, 1.45rem);
+  font-weight: 400;
+  letter-spacing: 0.18em;
+  padding-left: calc(1.6rem + 0.18em);
+  line-height: 1.2;
+  text-transform: none;
+  white-space: nowrap;
+  text-align: center;
+  color: rgba(255, 255, 255, 0.9);
+  text-shadow:
+    0 0 1px rgba(255, 255, 255, 0.35),
+    0 0 28px rgba(200, 220, 255, 0.28),
+    0 2px 12px rgba(0, 0, 0, 0.45);
+  opacity: 0;
+  animation: start-hint-in 1.8s cubic-bezier(0.22, 1, 0.36, 1) 0.2s forwards;
+}
+#start-hint::before {
+  content: "";
+  display: block;
+  width: 1.1rem;
+  height: 1px;
+  margin: 0 auto 0.85rem;
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0),
+    rgba(255, 255, 255, 0.65),
+    rgba(255, 255, 255, 0)
+  );
+  opacity: 0.85;
+}
+#start-hint::after {
+  content: "";
+  display: block;
+  width: 0.42rem;
+  height: 0.42rem;
+  margin: 0.95rem auto 0;
+  border-right: 1px solid rgba(255, 255, 255, 0.55);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.55);
+  transform: rotate(45deg);
+  opacity: 0.55;
+}
+#start-hint.wrap {
+  white-space: normal;
+  letter-spacing: 0.06em;
+  padding: 1rem 1.2rem 1.2rem;
+  padding-left: 1.2rem;
+  line-height: 1.4;
+  font-size: clamp(0.9rem, 3vw, 1.1rem);
+  font-weight: 400;
+}
+#start-hint.wrap::before { margin-bottom: 0.7rem; }
+#start-hint.wrap::after { display: none; }
+@media (max-width: 720px), (pointer: coarse) {
+  #start-hint {
+    font-size: clamp(1rem, 4.2vw, 1.3rem);
+    letter-spacing: 0.14em;
+    padding-left: calc(1.4rem + 0.14em);
+    padding-right: 1.4rem;
+  }
+}
+@keyframes start-hint-in {
+  from {
+    opacity: 0;
+    transform: translate(-50%, calc(-50% + 10px));
+    filter: blur(3px);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, -50%);
+    filter: blur(0);
+  }
+}
+body.playing #start-hint,
+body.mode-demo #start-hint {
+  opacity: 0;
+  visibility: hidden;
+  animation: none;
+}
+
+/* ---------- Operator panel (demo mode only) ---------- */
+#ops {
+  position: fixed;
+  left: max(1rem, env(safe-area-inset-left, 0px));
+  top: max(1rem, env(safe-area-inset-top, 0px));
+  z-index: 4;
+  width: min(22.5rem, calc(100vw - 2rem));
+  max-height: calc(100dvh - 2rem);
+  overflow: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 0.75rem;
+  display: none;
+  gap: 0.65rem;
+  flex-direction: column;
+  font-family: "Helvetica Neue", Helvetica, Arial, system-ui, sans-serif;
+  color: #e8ecf4;
+}
+body.mode-demo #ops { display: flex; }
+
+#ops-controls { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+#ops-controls button,
+.file-btn {
+  appearance: none;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: rgba(12, 14, 22, 0.72);
+  color: #f2f2f5;
+  padding: 0.4rem 0.75rem;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  touch-action: manipulation;
+  backdrop-filter: blur(12px);
+}
+#ops-controls button:hover, .file-btn:hover {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(255, 255, 255, 0.4);
+}
+
+.ops-card {
+  padding: 0.7rem 0.8rem 0.75rem;
+  border-radius: 14px;
+  background: rgba(8, 10, 18, 0.72);
+  border: 1px solid rgba(255, 255, 255, 0.10);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  box-shadow: 0 10px 36px rgba(0, 0, 0, 0.28);
+}
+.ops-card-soft { background: rgba(8, 10, 18, 0.55); }
+.ops-card-h {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 0.55rem;
+}
+.ops-kicker {
+  font-size: 0.62rem;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.45);
+}
+.ops-mode {
+  padding: 0.12rem 0.45rem;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  font-size: 0.6rem;
+  letter-spacing: 0.14em;
+  font-weight: 600;
+}
+body.mood-manual .ops-mode { border-color: #ff9a50; color: #ffb070; }
+
+.ops-now-main {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 0.65rem;
+  align-items: center;
+  margin-bottom: 0.65rem;
+}
+.ops-swatch, #mood-swatch {
+  width: 1.15rem; height: 1.15rem; border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  box-shadow: 0 0 14px currentColor;
+  transition: background 0.6s, box-shadow 0.6s;
+}
+.ops-screen, #emotion-label {
+  font-size: 1.05rem;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  line-height: 1.15;
+  transition: color 0.6s;
+}
+.ops-song, #mood-name {
+  margin-top: 0.15rem;
+  font-size: 0.72rem;
+  font-weight: 400;
+  letter-spacing: 0.04em;
+  color: rgba(255, 255, 255, 0.55);
+  transition: color 0.6s;
+}
+.ops-conf, #mood-conf {
+  font-size: 0.78rem;
+  font-variant-numeric: tabular-nums;
+  color: rgba(255, 255, 255, 0.55);
+}
+.ops-pending, #mood-pending {
+  min-height: 0;
+  margin-top: 0.45rem;
+  font-size: 0.68rem;
+  color: rgba(255, 255, 255, 0.5);
+}
+.ops-pending:empty { display: none; }
+
+/* Live mix */
+.ops-mix, #live-combo { display: flex; flex-direction: column; gap: 0.45rem; }
+.mix-title {
+  font-size: 0.95rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+.mix-pills { display: flex; flex-wrap: wrap; gap: 0.35rem; }
+.mix-pill {
+  display: inline-flex; align-items: center; gap: 0.35rem;
+  padding: 0.22rem 0.55rem;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid color-mix(in srgb, var(--mc, #fff) 35%, transparent);
+  font-size: 0.68rem;
+  color: rgba(255, 255, 255, 0.85);
+}
+.mix-pill i {
+  width: 0.45rem; height: 0.45rem; border-radius: 50%;
+  display: inline-block;
+}
+.mix-pill b { font-weight: 600; font-variant-numeric: tabular-nums; opacity: 0.9; }
+.mix-row {
+  display: grid;
+  grid-template-columns: 4.6rem auto 1fr;
+  gap: 0.45rem;
+  align-items: center;
+  padding-top: 0.35rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+.mix-label {
+  font-size: 0.58rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.4);
+}
+.mix-swatch, .mix-swatch b, .kh-dots, .kh-dots b {
+  display: inline-flex; align-items: center; gap: 0.2rem;
+}
+.mix-swatch b, .kh-dots b {
+  width: 0.62rem; height: 0.62rem; border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  display: inline-block;
+}
+.mix-names, .kh-names {
+  font-size: 0.7rem;
+  color: rgba(232, 236, 248, 0.78);
+  letter-spacing: 0.01em;
+}
+
+/* Mood color grid */
+.ops-mood-grid, #keys-hint {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.15rem;
+}
+.ops-mood-grid > .kh-mood, #keys-hint > .kh-mood {
+  display: grid;
+  grid-template-columns: 1.1rem 5.2rem auto 1fr;
+  gap: 0.45rem;
+  align-items: center;
+  padding: 0.38rem 0.45rem;
+  border-radius: 8px;
+  background: transparent;
+  border: 1px solid transparent;
+  min-width: 0;
+  font-size: 0.72rem;
+}
+#keys-hint > .kh-mood.active {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.12);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, currentColor 25%, transparent);
+}
+.kh-key {
+  font-size: 0.62rem;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.35);
+  font-variant-numeric: tabular-nums;
+}
+.kh-name {
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  color: #f4f6fb;
+  white-space: nowrap;
+}
+.kh-colors {
+  display: contents; /* dots + names participate in parent grid */
+}
+/* When kh-colors wraps dots+names, place them in cols 3 and 4 via grid on parent:
+   structure is key | name | colors(dots+names). Adjust: make colors a flex spanning rest */
+#keys-hint > .kh-mood {
+  grid-template-columns: 1.1rem 5.4rem 1fr;
+}
+#keys-hint .kh-colors {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  min-width: 0;
+}
+#keys-hint .kh-names {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: rgba(255, 255, 255, 0.55);
+  font-weight: 400;
+  font-size: 0.68rem;
+}
+
+.ops-shortcuts {
+  margin: 0.55rem 0 0;
+  padding-top: 0.5rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  font-size: 0.6rem;
+  line-height: 1.45;
+  letter-spacing: 0.02em;
+  color: rgba(255, 255, 255, 0.38);
+}
+
+#mood-bars {
+  display: flex; align-items: flex-end; gap: 0.3rem;
+  height: 64px; margin-top: 0.15rem;
+}
+.mbar {
+  display: flex; flex-direction: column; align-items: center;
+  justify-content: flex-end; width: 1.25rem; height: 100%;
+}
+.mbar i {
+  display: block; width: 100%; height: 4px;
+  border-radius: 3px 3px 1px 1px; opacity: 0.55;
+  transition: height 0.25s, opacity 0.25s;
+}
+.mbar.top i { opacity: 1; box-shadow: 0 0 10px currentColor; }
+.mbar span { margin-top: 0.12rem; font-size: 0.55rem; opacity: 0.55; }
+#mood-feats {
+  margin-top: 0.35rem; font-size: 0.6rem;
+  opacity: 0.45; font-variant-numeric: tabular-nums;
+}
+#status {
+  margin-top: 0.35rem; font-size: 0.62rem;
+  opacity: 0.45; word-break: break-word;
+}
+
+/* AI mood card (operator panel only) */
+#ai-panel .ops-card-h { display: flex; justify-content: space-between; align-items: center; gap: 0.5rem; }
+.ai-w { font-size: 0.6rem; opacity: 0.75; display: inline-flex; align-items: center; gap: 0.3rem; }
+.ai-w input { width: 6rem; accent-color: #a259ff; }
+.ai-line { margin-top: 0.3rem; font-size: 0.62rem; opacity: 0.7; word-break: break-word; font-variant-numeric: tabular-nums; }
+.ai-k { opacity: 0.6; }
+.ai-dim { opacity: 0.45; }
+.ai-moods { margin-top: 0.35rem; display: flex; flex-wrap: wrap; gap: 0.25rem; }
+.ai-pill { font-size: 0.6rem; padding: 0.1rem 0.4rem; border-radius: 999px; background: rgba(255, 255, 255, 0.07); display: inline-flex; align-items: center; gap: 0.25rem; }
+.ai-pill i { width: 0.5rem; height: 0.5rem; border-radius: 50%; display: inline-block; }
+.ai-pill.dim { opacity: 0.55; }
+.ai-btn { font: inherit; font-size: 0.6rem; padding: 0.1rem 0.5rem; border-radius: 999px; border: 1px solid rgba(255, 255, 255, 0.25); background: rgba(255, 255, 255, 0.06); color: inherit; cursor: pointer; }
+
+/* Operator toast (demo mode only; never shown to the audience) */
+#toast {
+  position: fixed; top: 1rem; right: 1rem; z-index: 5;
+  max-width: min(22rem, calc(100vw - 2rem));
+  top: max(1rem, env(safe-area-inset-top, 0px));
+  right: max(1rem, env(safe-area-inset-right, 0px));
+  padding: 0.5rem 0.8rem; border-radius: 8px;
+  background: rgba(8, 8, 14, 0.78); border: 1px solid rgba(255, 255, 255, 0.18);
+  font-size: 0.75rem; opacity: 0; pointer-events: none; transition: opacity 0.3s;
+  word-break: break-word;
+}
+body.mode-demo #toast.on { opacity: 0.92; }
+
+/* Presenter mode: the stage (projector) window shows only the canvas. */
+body.stage #ops, body.stage #whisper, body.stage #toast { display: none !important; }
+body.stage.idle, body.show-lock.idle, body.stage.idle canvas, body.show-lock.idle canvas { cursor: none !important; }

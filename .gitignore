@@ -1,0 +1,19 @@
+# local-only, never commit
+tools/certs/
+*.pem
+*.key
+.env*
+.vercel/
+*.tgz
+assets/demo.mp3
+# backups, test clips, scratch
+*-backups/
+.v1-backup/
+.deploy-*
+screenshots/
+shots/
+mood-test/
+*.wav
+*.mp3
+node_modules/
+.DS_Store

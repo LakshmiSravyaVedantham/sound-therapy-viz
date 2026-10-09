@@ -1,0 +1,5 @@
+# keep local-only files out of the Vercel upload
+tools/
+.env*
+assets/demo.mp3
+*.tgz

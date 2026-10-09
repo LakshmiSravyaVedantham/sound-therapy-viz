@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <title>Sound Therapy Viz</title>
+  <link rel="icon" href="data:," />
+  <link rel="stylesheet" href="style.css?v=1131ae08124d" />
+</head>
+<body class="mode-show">
+  <!-- The show: one canvas. Color + waves + light. Nothing else. -->
+  <canvas id="viz"></canvas>
+
+  <!-- Whisper: mood name (L toggles). Start-hint: soft pre-show cue, hides once playing. -->
+  <div id="whisper" aria-live="polite"></div>
+  <div id="start-hint" aria-hidden="true">Tap or click</div>
+
+  <!-- OPERATOR PANEL: hidden unless D is pressed. Audience never sees this. -->
+  <div id="ops">
+    <div id="ops-controls">
+      <button id="btn-mic" type="button">Start Mic</button>
+      <label class="file-btn">Load Track<input id="file-input" type="file" accept="audio/*" hidden /></label>
+      <button id="btn-auto" type="button" title="A = auto, M = manual lock">Auto mood: ON</button>
+      <button id="btn-label" type="button" title="L">Label: ON</button>
+      <button id="btn-asmr" type="button" title="Z">ASMR: OFF</button>
+      <button id="btn-ai" type="button" title="I">AI: ON</button>
+      <button id="btn-fs" type="button" title="F = fullscreen, panel away, cursor hidden. Esc leaves.">Show mode (F)</button>
+      <button id="btn-mode" type="button" title="D">Hide panel</button>
+    </div>
+
+    <section class="ops-card" id="ops-now" aria-label="Live mood mix">
+      <header class="ops-card-h">
+        <span class="ops-kicker">Now</span>
+        <span id="mood-mode" class="ops-mode">AUTO</span>
+      </header>
+      <div class="ops-now-main">
+        <span id="mood-swatch" class="ops-swatch"></span>
+        <div class="ops-now-text">
+          <div id="emotion-label" class="ops-screen">CALM</div>
+          <div id="mood-name" class="ops-song">waiting for sound</div>
+        </div>
+        <span id="mood-conf" class="ops-conf"></span>
+      </div>
+      <div id="live-combo" class="ops-mix" aria-live="polite"></div>
+      <div id="mood-pending" class="ops-pending"></div>
+    </section>
+
+    <section class="ops-card" id="ops-palettes" aria-label="Mood colors">
+      <header class="ops-card-h"><span class="ops-kicker">Mood colors</span></header>
+      <ul id="keys-hint" class="ops-mood-grid">
+        <li data-k="1" class="kh-mood"><span class="kh-key">1</span><span class="kh-name">Joy</span><span class="kh-colors"><span class="kh-dots"><b style="background:#ffb81a"></b><b style="background:#ff8a00"></b><b style="background:#ff3d7f"></b></span><span class="kh-names">gold, orange, and magenta</span></span></li>
+        <li data-k="2" class="kh-mood"><span class="kh-key">2</span><span class="kh-name">Calm</span><span class="kh-colors"><span class="kh-dots"><b style="background:#22e8d2"></b><b style="background:#4aa3ff"></b></span><span class="kh-names">teal and blue</span></span></li>
+        <li data-k="3" class="kh-mood"><span class="kh-key">3</span><span class="kh-name">Love</span><span class="kh-colors"><span class="kh-dots"><b style="background:#ff7a9a"></b><b style="background:#ffb6a3"></b></span><span class="kh-names">pink and peach</span></span></li>
+        <li data-k="4" class="kh-mood"><span class="kh-key">4</span><span class="kh-name">Release</span><span class="kh-colors"><span class="kh-dots"><b style="background:#2f5dff"></b><b style="background:#4b2fd6"></b></span><span class="kh-names">blue and violet</span></span></li>
+        <li data-k="5" class="kh-mood"><span class="kh-key">5</span><span class="kh-name">Grounding</span><span class="kh-colors"><span class="kh-dots"><b style="background:#ff9433"></b><b style="background:#c43a1a"></b></span><span class="kh-names">orange and rust</span></span></li>
+        <li data-k="6" class="kh-mood"><span class="kh-key">6</span><span class="kh-name">Clarity</span><span class="kh-colors"><span class="kh-dots"><b style="background:#5af2ff"></b></span><span class="kh-names">cyan</span></span></li>
+        <li data-k="7" class="kh-mood"><span class="kh-key">7</span><span class="kh-name">Spiritual</span><span class="kh-colors"><span class="kh-dots"><b style="background:#a259ff"></b><b style="background:#6dffc4"></b></span><span class="kh-names">purple and lime</span></span></li>
+        <li data-k="8" class="kh-mood"><span class="kh-key">8</span><span class="kh-name">Energy</span><span class="kh-colors"><span class="kh-dots"><b style="background:#ff4214"></b><b style="background:#c8ff2e"></b></span><span class="kh-names">red and lime</span></span></li>
+        <li data-k="9" class="kh-mood"><span class="kh-key">9</span><span class="kh-name">Sad</span><span class="kh-colors"><span class="kh-dots"><b style="background:#7d93ad"></b><b style="background:#b4c3d4"></b></span><span class="kh-names">grey-blue and mist</span></span></li>
+        <li data-k="10" class="kh-mood"><span class="kh-key">0</span><span class="kh-name">Wonder</span><span class="kh-colors"><span class="kh-dots"><b style="background:#ffd76a"></b><b style="background:#fff8e6"></b></span><span class="kh-names">gold and white</span></span></li>
+        <li data-k="11" class="kh-mood"><span class="kh-key">-</span><span class="kh-name">Intensity</span><span class="kh-colors"><span class="kh-dots"><b style="background:#d2203a"></b><b style="background:#ff7a3c"></b></span><span class="kh-names">deep red and ember</span></span></li>
+      </ul>
+      <p class="ops-shortcuts">A auto · M lock · ⇧1–8 teach · ⇧0 reset · [ ] trim · L label · W waves · S silk · N nebula · Z asmr · I ai · O track · F full · D panel</p>
+    </section>
+
+    <section class="ops-card ops-card-soft" id="ops-scores" aria-label="Score bars">
+      <header class="ops-card-h"><span class="ops-kicker">Scores</span></header>
+      <div id="mood-bars"></div>
+      <div id="mood-feats"></div>
+      <div id="status"></div>
+    </section>
+
+    <section class="ops-card ops-card-soft" id="ai-panel" aria-label="AI mood">
+      <header class="ops-card-h"><span class="ops-kicker">AI mood (I)</span>
+        <label class="ai-w">blend <input id="ai-weight" type="range" min="0" max="100" step="5" value="70" /> <b id="ai-weight-val">70%</b></label>
+      </header>
+      <div id="ai-status" class="ai-line"></div>
+      <div class="ai-line"><span class="ai-k">hears</span> <span id="ai-top"></span></div>
+      <div id="ai-moods" class="ai-moods"></div>
+      <div id="ai-heads" class="ai-line ai-dim"></div>
+      <div class="ai-line"><span class="ai-k">AI drives</span> <button id="ai-motion" type="button" class="ai-btn">color + motion</button></div>
+      <div id="ai-motion-vals" class="ai-line ai-dim"></div>
+    </section>
+  </div>
+
+  <div id="toast"></div>
+
+  <script src="mood.js?v=1131ae08124d"></script>
+  <script src="app.js?v=1131ae08124d"></script>
+</body>
+</html>
