@@ -221,6 +221,9 @@ spriteA.width = spriteA.height = spriteB.width = spriteB.height = SPRITE;
 const params = new URLSearchParams(location.search);
 // Presenter mode: ?stage=1 = projector window (canvas only). A control window (control.html) drives it.
 const STAGE_PARAM = params.get("stage") === "1";
+// Beat in waves: OFF by default = waves follow loudness, spectrum and voice smoothly (no per-beat bumps,
+// no AI bob, calmer built-in rhythm). ON (B key, ?beat=1) = the older behavior exactly.
+let beatInWaves = params.get("beat") === "1";
 const PRES = { send: null, connected: false, lastHello: 0, showLock: false, idleTimer: null };
 const panelLive = () => demoMode || PRES.connected; // keep panel DOM updated when a control window mirrors it
 const stageLocked = () => STAGE_PARAM || PRES.connected; // projector: panel never shows here
@@ -299,7 +302,7 @@ const t0 = performance.now();
 const A = {
   amp: 0, ampSlow: 0, activity: 0, gate: 0, peak: 0.02,
   bass: 0, mid: 0, high: 0, bassSlow: 0, bassPeak: 0.05, midPeak: 0.05, highPeak: 0.05,
-  lastOnset: -1, rippleAcc: 0, pulse: 0, flux: 0, fluxAvg: 0,
+  lastOnset: -1, lastRing: -1e9, rippleAcc: 0, pulse: 0, flux: 0, fluxAvg: 0,
   spec: new Float32Array(64), // smoothed log-frequency spectrum for the waves
 };
 // Adaptive quality: if the laptop can't hold ~45 fps, quietly drop detail (audience never notices)
@@ -1074,7 +1077,7 @@ function aiMotionTargets() {
   T.wl = 1 + (wl - 1) * e;
   T.amp = 1 + (amp - 1) * e;
   T.drift = drift * e;
-  T.bounce = clamp01(1.1 * p.joy + 0.35 * drums) * e;
+  T.bounce = beatInWaves ? clamp01(1.1 * p.joy + 0.35 * drums) * e : 0; // beat off: no fixed-rate bob
   T.swell = clamp01(1.3 * p.love) * e;
   T.hit = clamp01(drums + 0.8 * pInt) * e;
   T.voice = voice * str * (asmrMode ? 0.7 : 1);
@@ -1331,16 +1334,22 @@ function readAudio(dt, time) {
     A.lastOnset = time;
     const st = clamp01(0.28 + rise * 1.6);
     // rare soft halo only — silk + sparks carry the show
-    if (st > 0.35 && Math.random() < 0.55) spawnRipple(st * 0.7);
-    A.pulse = Math.max(A.pulse, Math.min(0.2, st * 0.28)); // soft swell only — never a flash/flood
-    onPatternOnset(st, time);
-    if (PULSES.length > 8) PULSES.shift();
-    PULSES.push({ u: (moodMode_ !== "auto" && EMOTIONS[targetKey].ripple === "center") ? 0.5 : 0.25 + Math.random() * 0.5, t0: time, s: st });
+    if (beatInWaves) {
+      if (st > 0.35 && Math.random() < 0.55) spawnRipple(st * 0.7);
+      A.pulse = Math.max(A.pulse, Math.min(0.2, st * 0.28)); // soft swell only — never a flash/flood
+      onPatternOnset(st, time);
+      if (PULSES.length > 8) PULSES.shift();
+      PULSES.push({ u: (moodMode_ !== "auto" && EMOTIONS[targetKey].ripple === "center") ? 0.5 : 0.25 + Math.random() * 0.5, t0: time, s: st });
+    } else {
+      // beat off: onsets only feed sparks / particles; a ring only for a clear new sound event, never per beat
+      onPatternOnset(st, time);
+      if (st > 0.5 && time - A.lastRing > 3.5) { A.lastRing = time; spawnRipple(st * 0.6); }
+    }
   }
   // continuous per-mood rings from the voice/center (rate from emotion, not MOTION_BASE)
   const ringRate = EMOTIONS[targetKey].rippleRate || 0.5;
   A.rippleAcc += dt * (0.03 + 0.45 * A.activity ** 1.5) * ringRate;
-  if (A.activity > 0.16 && A.rippleAcc > 1) {
+  if (beatInWaves && A.activity > 0.16 && A.rippleAcc > 1) {
     A.rippleAcc = 0;
     spawnRipple(0.22 + A.activity * 0.4);
   }
@@ -1363,7 +1372,7 @@ function asmrOnsets(time, rise, ampRise, fluxHit) {
     const st = softCap(0.12 + soft * 1.1, 0.4);
     // (no wave pulse here: per-onset swells made the strands tick with the beat; waves follow VOICE instead)
     // AI hears drums: a small, soft, capped swell per hit (only while the AI motion profile says so)
-    if (AIM.hit > 0.05) { if (PULSES.length > 6) PULSES.shift(); PULSES.push({ u: 0.5, t0: time, s: Math.min(0.25, st * AIM.hit) }); }
+    if (beatInWaves && AIM.hit > 0.05) { if (PULSES.length > 6) PULSES.shift(); PULSES.push({ u: 0.5, t0: time, s: Math.min(0.25, st * AIM.hit) }); }
     // soft sounds add a few more gentle elements (each fades in; never a burst)
     spawnMoodSpark(0.35 + 0.4 * st);
     if (st > 0.22) spawnMoodSpark(0.35 + 0.4 * st);
@@ -1975,6 +1984,7 @@ function silkBand(rb, time, breath, tReal) {
     // Opposite dir on neighbouring ribbons = leftward + rightward living fabric.
     const flow = SILK_FLOW * rb.dir;
     const flowAmp = h * SILK_FLOW_AMP * (1 + 0.45 * a2); // travel height grows with activity
+    const flowAmpCalm = h * SILK_FLOW_AMP * (1 + 0.15 * a2);
     // Scroll spectrum sample window so live textile texture streams with the ribbon (not locked to X).
     const uSamp = ((u - time * SILK_FLOW * SILK_SCROLL * rb.dir) % 1 + 1) % 1;
     // spectrum mirrored from scrolled centre; HIGH bins dominate (edges), low bins muted
@@ -1996,10 +2006,14 @@ function silkBand(rb, time, breath, tReal) {
       pulse += p.s * Math.exp(-(d * d) / (0.006 * pWid)) * Math.exp(-dtp * 1.4 * pDec);
     }
     // Traveling waves: phase - omega*t so peaks stream along X (signed flow = opposite neighbour dirs).
-    let y = base +
-      Math.sin(u * Math.PI * 2 * kA - time * flow * rb.w + rb.ph) * (amp0 + flowAmp + ampLive * 0.5) * aiAmp * env +
-      Math.sin(u * Math.PI * 2 * (kA * 2.15) + time * 1.35 * flow + rb.ph * 2) * (flowAmp * 0.85 + ampLive * 0.28) * aiAmp * env +
-      Math.sin(u * Math.PI * wl3 - time * 0.55 * flow + rb.ph * 0.7) * (amp0 + flowAmp * 0.4) * 0.55 * aiAmp * env -
+    let y = base + (beatInWaves
+      ? Math.sin(u * Math.PI * 2 * kA - time * flow * rb.w + rb.ph) * (amp0 + flowAmp + ampLive * 0.5) * aiAmp * env +
+        Math.sin(u * Math.PI * 2 * (kA * 2.15) + time * 1.35 * flow + rb.ph * 2) * (flowAmp * 0.85 + ampLive * 0.28) * aiAmp * env +
+        Math.sin(u * Math.PI * wl3 - time * 0.55 * flow + rb.ph * 0.7) * (amp0 + flowAmp * 0.4) * 0.55 * aiAmp * env
+      // beat off: the middle wave is slower, detuned per ribbon and no longer grows with loudness (loudness goes to the first wave)
+      : Math.sin(u * Math.PI * 2 * kA - time * flow * rb.w + rb.ph) * (amp0 + flowAmp + ampLive * 0.62) * aiAmp * env +
+        Math.sin(u * Math.PI * 2 * (kA * 2.15) + time * (0.3 + 0.42 * rb.w) * flow + rb.ph * 2) * flowAmpCalm * 0.85 * aiAmp * env +
+        Math.sin(u * Math.PI * wl3 - time * (0.36 + 0.14 * rb.w) * flow + rb.ph * 0.7) * (amp0 + flowAmp * 0.4) * 0.55 * aiAmp * env) -
       live * specAmp * env * rb.dir -
       pulse * (isPhone ? M : h) * (isPhone ? 0.08 : 0.07) * pal.wave * env * rb.dir * pAmp * (1 + 0.9 * AIM.hit);
     if (aiBob !== 0) y += aiBob * env;
@@ -2139,10 +2153,13 @@ function waveBand(rb, time, breath, tReal) {
     // Traveling sinusoids: phase - omega*t so crests stream left→right
     let y = base +
       Math.sin(u * Math.PI * 2 * kA - time * flow * rb.w + rb.ph) * (amp0 + flowAmp + ampLive * 0.5) * aiAmp * env +
-      Math.sin(u * Math.PI * 2 * (kA * 1.65) - time * flow * 1.35 + rb.ph * 1.6) * (flowAmp * 0.8 + ampLive * 0.28) * aiAmp * env +
-      Math.sin(u * Math.PI * wl3 - time * flow * 0.5 + rb.ph * 0.8) * (amp0 + flowAmp * 0.35) * 0.5 * aiAmp * env -
+      (beatInWaves
+        ? Math.sin(u * Math.PI * 2 * (kA * 1.65) - time * flow * 1.35 + rb.ph * 1.6) * (flowAmp * 0.8 + ampLive * 0.28) * aiAmp * env +
+          Math.sin(u * Math.PI * wl3 - time * flow * 0.5 + rb.ph * 0.8) * (amp0 + flowAmp * 0.35) * 0.5 * aiAmp * env
+        : Math.sin(u * Math.PI * 2 * (kA * 1.65) - time * flow * (0.3 + 0.42 * rb.w) + rb.ph * 1.6) * (flowAmp * 0.8 + ampLive * 0.12) * aiAmp * env +
+          Math.sin(u * Math.PI * wl3 - time * flow * (0.33 + 0.14 * rb.w) + rb.ph * 0.8) * (amp0 + flowAmp * 0.35) * 0.5 * aiAmp * env) -
       live * specAmp * env -
-      td * tdAmp * env * tdK -
+      td * tdAmp * env * tdK * (beatInWaves ? 1 : 0.35) -
       pulse * h * 0.09 * pal.wave * env * pAmp * (1 + 0.9 * AIM.hit);
     if (aiBob !== 0) y += aiBob * env;
     if (vAw !== 0) y -= vAw * Math.sin(u * Math.PI * 2 * vKw - VOICE.phase + rb.ph) * env;
@@ -2309,7 +2326,7 @@ function updateLoveHeart(dt, time) {
     LOVE.phase = 0;
     LOVE.next = time + period * (0.94 + Math.random() * 0.1);
     // Soft circle halo on the beat (same language as other moods)
-    if (LOVE.strength > 0.15 && A.gate > 0.15 && (!asmrMode || Math.random() < 0.3)) {
+    if (beatInWaves && LOVE.strength > 0.15 && A.gate > 0.15 && (!asmrMode || Math.random() < 0.3)) {
       // ASMR: only some beats, as a slow soft emanation
       spawnRipple((0.32 + 0.5 * LOVE.strength) * (asmrMode ? 0.7 : 1), [W * 0.5, H * 0.54], asmrMode);
     }
@@ -2318,7 +2335,7 @@ function updateLoveHeart(dt, time) {
   const p = period;
   const lub = Math.exp(-Math.pow((LOVE.phase - 0.02) / 0.06, 2));
   const dub = 0.5 * Math.exp(-Math.pow((LOVE.phase - p * 0.2) / 0.055, 2));
-  const env = (lub + dub) * (0.4 + 0.6 * LOVE.strength);
+  const env = (lub + dub) * (0.4 + 0.6 * LOVE.strength) * (beatInWaves ? 1 : 0.35); // beat off: subtle glow pulse
   LOVE.beat = smooth(LOVE.beat, clamp01(env), dt, 0.045);
 }
 
@@ -3193,6 +3210,7 @@ window.addEventListener("keydown", (e) => {
   else if (key === "n") setVizMode("nebula");
   else if (key === "z") setAsmrMode(!asmrMode, true);
   else if (key === "i") setAIOn(!AI.wanted);
+  else if (key === "b") setBeatInWaves(!beatInWaves);
 });
 window.addEventListener("resize", resize);
 window.addEventListener("orientationchange", () => setTimeout(resize, 120));
@@ -3200,6 +3218,14 @@ if (window.visualViewport) {
   window.visualViewport.addEventListener("resize", resize);
   window.visualViewport.addEventListener("scroll", resize);
 }
+
+function setBeatInWaves(on) {
+  beatInWaves = !!on;
+  if (!on) { PULSES.length = 0; A.pulse = 0; }
+  const b = $("btn-beat"); if (b) b.textContent = "Beat in waves: " + (on ? "ON" : "OFF");
+  toast("Beat in waves " + (on ? "ON (waves bump with hits)" : "OFF (smooth waves)"));
+}
+if ($("btn-beat")) { $("btn-beat").addEventListener("click", () => setBeatInWaves(!beatInWaves)); $("btn-beat").textContent = "Beat in waves: " + (beatInWaves ? "ON" : "OFF"); }
 
 // ---------- presenter link (stage <-> control window) ----------
 function presTransport(onMsg) {
@@ -3233,7 +3259,7 @@ function sendStageState(force) {
       build: (BUILD_Q || "").replace("?v=", ""), running, audio: audioCtx ? audioCtx.state : "none",
       fullscreen: !!document.fullscreenElement, show: PRES.showLock, stageParam: STAGE_PARAM,
       mood: EMOTIONS[targetKey].label, auto: moodMode_ === "auto", asmr: asmrMode, ai: !!AI.wanted,
-      aiWeight: $("ai-weight") ? Number($("ai-weight").value) : 70, viz: vizMode, label: labelOn,
+      beat: beatInWaves, aiWeight: $("ai-weight") ? Number($("ai-weight").value) : 70, viz: vizMode, label: labelOn,
       title: document.title,
     },
   });

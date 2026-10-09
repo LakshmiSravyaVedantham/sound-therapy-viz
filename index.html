@@ -8,7 +8,7 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <title>Sound Therapy Viz</title>
   <link rel="icon" href="data:," />
-  <link rel="stylesheet" href="style.css?v=1131ae08124d" />
+  <link rel="stylesheet" href="style.css?v=ba971587ed92" />
 </head>
 <body class="mode-show">
   <!-- The show: one canvas. Color + waves + light. Nothing else. -->
@@ -27,6 +27,7 @@
       <button id="btn-label" type="button" title="L">Label: ON</button>
       <button id="btn-asmr" type="button" title="Z">ASMR: OFF</button>
       <button id="btn-ai" type="button" title="I">AI: ON</button>
+      <button id="btn-beat" type="button" title="B">Beat in waves: OFF</button>
       <button id="btn-fs" type="button" title="F = fullscreen, panel away, cursor hidden. Esc leaves.">Show mode (F)</button>
       <button id="btn-mode" type="button" title="D">Hide panel</button>
     </div>
@@ -63,7 +64,7 @@
         <li data-k="10" class="kh-mood"><span class="kh-key">0</span><span class="kh-name">Wonder</span><span class="kh-colors"><span class="kh-dots"><b style="background:#ffd76a"></b><b style="background:#fff8e6"></b></span><span class="kh-names">gold and white</span></span></li>
         <li data-k="11" class="kh-mood"><span class="kh-key">-</span><span class="kh-name">Intensity</span><span class="kh-colors"><span class="kh-dots"><b style="background:#d2203a"></b><b style="background:#ff7a3c"></b></span><span class="kh-names">deep red and ember</span></span></li>
       </ul>
-      <p class="ops-shortcuts">A auto · M lock · ⇧1–8 teach · ⇧0 reset · [ ] trim · L label · W waves · S silk · N nebula · Z asmr · I ai · O track · F full · D panel</p>
+      <p class="ops-shortcuts">A auto · M lock · ⇧1–8 teach · ⇧0 reset · [ ] trim · L label · W waves · S silk · N nebula · Z asmr · I ai · B beat · O track · F full · D panel</p>
     </section>
 
     <section class="ops-card ops-card-soft" id="ops-scores" aria-label="Score bars">
@@ -88,7 +89,7 @@
 
   <div id="toast"></div>
 
-  <script src="mood.js?v=1131ae08124d"></script>
-  <script src="app.js?v=1131ae08124d"></script>
+  <script src="mood.js?v=ba971587ed92"></script>
+  <script src="app.js?v=ba971587ed92"></script>
 </body>
 </html>
